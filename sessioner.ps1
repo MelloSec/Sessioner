@@ -108,12 +108,18 @@ Enter-PSSession $session
 
 
 # Functions for cleaning up a bit. There are more steps to fully disable, including stopping the service and re-firewalling WinRM ports
-function Disable-PSRemoting {
+function Reset-PSRemoting {
     Write-Output "Disabling PSRemoting on remote server."
     $ScriptBlock = {
-        Disable-PSRemoting -Force
+           Disable-PSRemoting -Force
+           # Remove WinRM firewall rules
+           Get-NetFirewallRule -DisplayName "Windows Remote Management (HTTP-In)" | Remove-NetFirewallRule
+           Get-NetFirewallRule -DisplayName "Windows Remote Management (HTTPS-In)" | Remove-NetFirewallRule
+           # Stop  and Disable WinRM service
+           Stop-Service -Name "WinRM"
+           Set-Service -Name WinRM -StartupType Disabled
+           Set-ExecutionPolicy $originalExecutionPolicy -Scope LocalMachine -Force
     }
-
     Invoke-Command -ComputerName $ServerName -Credential $Credential -ScriptBlock $ScriptBlock
 }
 
@@ -123,3 +129,4 @@ function Reset-ExecutionPolicy {
         Set-ExecutionPolicy $originalExecutionPolicy -Scope LocalMachine -Force
     }
 }
+
